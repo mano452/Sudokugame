@@ -3,6 +3,60 @@ let isPlaying = false;
 let guessCounter = 0;
 let sleepTime = 200;
 
+// neww
+let solutionGrid; // Add this line to store the solution grid
+
+function generateSudoku(difficulty) {
+    solutionGrid = generateSolution(); // Store the solution grid
+    let puzzle;
+    switch (difficulty) {
+        case 'easy':
+            puzzle = revealCells(solutionGrid, 45);
+            break;
+        case 'medium':
+            puzzle = revealCells(solutionGrid, 35);
+            break;
+        case 'hard':
+            puzzle = revealCells(solutionGrid, 25);
+            break;
+    }
+    guessCounter = 0;
+    sleepTime = 200;
+    fillGrid(puzzle);
+    document.getElementById('check-button').disabled = true; // Disable check button initially
+    isPlaying = true;
+    document.getElementById('easy-button').disabled = true; // Disable generate buttons
+    document.getElementById('medium-button').disabled = true;
+    document.getElementById('hard-button').disabled = true;
+    document.getElementById('hint-button').disabled = false; // Enable the Hint button
+}
+
+
+function giveHint() {
+    let grid = getCurrentGrid();
+    let solutionGrid = JSON.parse(JSON.stringify(grid)); // Create a deep copy of the current grid
+
+    if (solveSudoku(solutionGrid)) {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                const cell = document.getElementById(`cell-${row}-${col}`);
+                if (grid[row][col] === 0) {
+                    cell.textContent = solutionGrid[row][col];
+                    cell.classList.add('hinted-number');
+                    return;
+                }
+            }
+        }
+    }
+}
+
+window.onload = function() {
+    generateEmptyGrid();
+};
+
+
+
+// neww
 function generateEmptyGrid() {
     const grid = document.getElementById('sudoku-grid');
     grid.innerHTML = '';
@@ -24,6 +78,16 @@ function generateEmptyGrid() {
         grid.appendChild(tr);
     }
     generateNumberButtons();
+
+    if (!document.getElementById('check-button')) {
+        const checkButton = document.createElement('button');
+        checkButton.id = 'check-button';
+        checkButton.className = 'btn btn-dark';
+        checkButton.textContent = 'Check Solution';
+        checkButton.disabled = true;
+        checkButton.onclick = checkSolution;
+        document.querySelector('.btn-group').appendChild(checkButton);
+    }
 }
 
 function generateNumberButtons() {
@@ -182,12 +246,15 @@ function checkSolution() {
         grid[row] = [];
         for (let col = 0; col < 9; col++) {
             const cell = document.getElementById(`cell-${row}-${col}`);
-            grid[row][col] = cell.textContent === '' ? 0 : parseInt(cell.textContent);
+            if (!cell.classList.contains('initial-number') && !cell.classList.contains('hint-number')) {
+                grid[row][col] = cell.textContent === '' ? 0 : parseInt(cell.textContent);
+            } else {
+                grid[row][col] = solutionGrid[row][col]; // use the solution value
+            }
         }
     }
 
     let valid = true;
-
     // Reset cell colors
     for (let row = 0; row < 9; row++) {
         for (let col = 0; col < 9; col++) {
@@ -203,6 +270,7 @@ function checkSolution() {
                     if(grid[i][j] === grid[m][n] && (i === m || j === n) && !(i === m && j === n)){
                         console.log(i + " " + j + " " + m + " " + n);
                         highlightMistake(i, j);
+                        valid = false; // Add this line to indicate the solution is invalid
                     }
                 }
             }
@@ -211,14 +279,14 @@ function checkSolution() {
 
     // Check subgrids
     for (let row = 0; row < 9; row += 3) {
-        for (let col = 0; col < 9; col += 3) {
+        for (let col = 0; col += 3; col++) {
             let subgridSet = new Set();
             for (let i = 0; i < 3; i++) {
                 for (let j = 0; j < 3; j++) {
                     let num = grid[row + i][col + j];
                     if (num !== 0 && subgridSet.has(num)) {
                         valid = false;
-                        console.log(row + i + "  " + col + j);
+                        console.log(row + i + " " + col + j);
                         highlightMistake(row + i, col + j);
                     }
                     subgridSet.add(num);
@@ -233,6 +301,7 @@ function checkSolution() {
         document.getElementById('easy-button').disabled = false; // Enable generate buttons
         document.getElementById('medium-button').disabled = false;
         document.getElementById('hard-button').disabled = false;
+        document.getElementById('hint-button').disabled = true; // Disable the Hint button after solution
     } else {
         alert("There are mistakes in your solution.");
     }
